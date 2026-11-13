@@ -1,0 +1,33 @@
+const $=id=>document.getElementById(id);
+const pageNames={dashboard:'Overview',consultation:'Consultation',records:'Medical records',messages:'Messages',profile:'My profile',settings:'Settings'};
+function toast(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.remove('show'),2300)}
+function showPage(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const page=$('page-'+name);if(page)page.classList.add('active');document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===name));$('crumb').textContent=pageNames[name]||'Overview';$('sidebar').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(b){e.preventDefault();showPage(b.dataset.page)}});
+$('menuBtn').onclick=()=>$('sidebar').classList.toggle('open');
+$('notifyBtn').onclick=()=>toast('You are all caught up on notifications (demo).');
+
+let mode='video',muted=false,cameraOff=false,captions=false;
+function adapt(){const n=+$('bandwidth').value;let next,rate,label,title,desc;
+if(n>=55){next='video';rate=(.25+n*.024).toFixed(1)+' Mbps';label='Connection excellent';title='● Video quality is good';desc='Video is active. As bandwidth falls, CareBridge switches to audio and then text. Your consultation record stays open.'}
+else if(n>=25){next='audio';rate=Math.round(28+n*2.2)+' kbps';label='Limited connection';title='● Switched to audio';desc='Video is paused to preserve call quality. Audio and text remain available; your clinical notes are unchanged.'}
+else{next='text';rate=Math.max(2,Math.round(4+n*.55))+' kbps';label='Very poor connection';title='● Text-only mode active';desc='Audio and video are paused. Continue by text; messages and clinical notes remain available for export.'}
+if(next!==mode){mode=next;toast('Connection adapted: '+mode.toUpperCase()+' mode')}
+$('stage').className='call-stage '+mode;$('modePill').className='mode-pill '+mode;$('modePill').textContent=mode.toUpperCase()+' MODE';$('qualityLabel').textContent=label;$('speedValue').textContent=rate;$('modeExplain').innerHTML='<b>'+title+'</b><span>'+desc+'</span>'}
+$('bandwidth').addEventListener('input',adapt);adapt();
+$('micBtn').onclick=()=>{muted=!muted;$('micBtn').classList.toggle('off',muted);$('micBtn').innerHTML='<span>'+(muted?'🔇':'🎙')+'</span><small>'+(muted?'Unmute':'Mute')+'</small>';toast(muted?'Microphone muted (demo)':'Microphone unmuted (demo)')};
+$('cameraBtn').onclick=()=>{cameraOff=!cameraOff;$('cameraBtn').classList.toggle('off',cameraOff);$('cameraBtn').innerHTML='<span>'+(cameraOff?'▧':'▣')+'</span><small>'+(cameraOff?'Camera off':'Camera')+'</small>';toast(cameraOff?'Camera paused (demo)':'Camera enabled (demo)')};
+$('captionBtn').onclick=()=>{captions=!captions;$('captionBtn').classList.toggle('off',captions);toast(captions?'Captions enabled (demo)':'Captions disabled')};
+$('endBtn').onclick=()=>{$('endBtn').disabled=true;$('endBtn').textContent='Visit ended';toast('Demo consultation ended. Export your visit record before closing.')};
+$('chatForm').addEventListener('submit',e=>{e.preventDefault();const v=$('chatInput').value.trim();if(!v)return;const b=document.createElement('div');b.className='chat-msg patient';const s=document.createElement('small');s.textContent='You · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});b.append(s,document.createTextNode(v));$('chatList').append(b);$('chatList').scrollTop=$('chatList').scrollHeight;$('chatInput').value='';toast(mode==='text'?'Text message queued in demo':'Message added to consultation')});
+function visitRecord(){return {application:'CareBridge Low-Bandwidth Telemedicine',visitId:'CB-1048',patient:{name:'Alex Smith',age:34,account:'Demo'},clinician:'Dr. Maya Rao',exportedAt:new Date().toISOString(),connection:{mode,estimatedBandwidth:$('speedValue').textContent},clinicalRecord:{chiefComplaint:$('complaint').value,symptomsAndHistory:$('history').value,temperature:$('temperature').value,bloodPressure:$('bloodPressure').value,assessment:$('assessment').value,planAndFollowUp:$('plan').value},conversation:[...$('chatList').children].map(x=>({role:x.classList.contains('clinician')?'clinician':'patient',message:x.innerText})),disclaimer:'Demo prototype only. Not a validated medical record or clinical decision support system.'}}
+function exportVisit(){const blob=new Blob([JSON.stringify(visitRecord(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='carebridge-visit-CB-1048.json';a.click();URL.revokeObjectURL(url);toast('Visit record exported as JSON')}
+$('saveNotes').onclick=()=>{try{sessionStorage.setItem('carebridge-visit',JSON.stringify(visitRecord()));$('saveState').textContent='Saved in this browser session at '+new Date().toLocaleTimeString()+'.';toast('Clinical notes saved locally')}catch(e){toast('Unable to save in browser session')}};
+$('exportNotes').onclick=exportVisit;$('recordExport').onclick=exportVisit;
+const modalText={summary:'Sample visit summary for Alex Smith. Chief complaint: headache since yesterday evening. This demo document is not a real medical record.',lab:'Sample laboratory report placeholder. No actual test results are included in this prototype.',prescription:'Sample prescription placeholder. Medication details are intentionally not provided.',notes:'Sample previous visit notes placeholder. This preview demonstrates document navigation only.'};
+document.querySelectorAll('[data-record]').forEach(b=>b.onclick=()=>{$('modalTitle').textContent=b.parentElement.querySelector('.file-info b').textContent;$('modalText').textContent=modalText[b.dataset.record];$('modal').classList.add('show')});
+function closeModal(){$('modal').classList.remove('show')};$('closeModal').onclick=closeModal;$('modalOk').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal()};
+$('inboxSend').onclick=()=>{const v=$('inboxInput').value.trim();if(!v)return;toast('Message sent in demo inbox');$('inboxInput').value=''};
+$('editProfile').onclick=()=>toast('Profile editing is a demo placeholder.');
+$('clearData').onclick=()=>{sessionStorage.removeItem('carebridge-visit');toast('CareBridge demo session data cleared')};
+$('autoSwitch').onchange=e=>toast(e.target.checked?'Automatic mode switching enabled':'Automatic mode switching disabled in settings (simulator remains manual)');
+$('textSize').onchange=e=>{document.body.style.fontSize=e.target.value==='Large'?'15px':'13px';toast('Text size updated')};
